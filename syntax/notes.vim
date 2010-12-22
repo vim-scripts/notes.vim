@@ -1,6 +1,6 @@
 ﻿" Vim syntax script
 " Author: Peter Odding <peter@peterodding.com>
-" Last Change: December 21, 2010
+" Last Change: December 22, 2010
 " URL: http://peterodding.com/code/vim/notes/
 
 " Note: This file is encoded in UTF-8 including a byte order mark so
@@ -35,7 +35,7 @@ highlight def link notesListNumber Comment
 
 " Highlight text emphasized in italic font. {{{2
 if has('conceal')
-  syntax region notesItalic matchgroup=notesItalicMarker start=/\<_[A-Za-z]\@=/ end=/\n\|\<_\>/ contains=@Spell concealends
+  syntax region notesItalic matchgroup=notesItalicMarker start=/\<_[A-Za-z]\@=/ end=/_\>\|\n/ contains=@Spell concealends
   highlight link notesItalicMarker notesHiddenMarker 
 else
   syntax match notesItalic /\<_\w[^_]*\w_\>/
@@ -58,7 +58,7 @@ syntax match notesTextURL @\<www\.\(\S*\w\)\+[/?#]\?@
 syntax cluster notesInline add=notesTextURL
 highlight def link notesTextURL Underlined
 if has('conceal')
-  syntax region notesFullURL matchgroup=notesURLScheme start=@\<\(mailto:\|javascript:\|\w\{3,}://\)@ end=/\(\s\|$\)\@=/ concealends
+  syntax region notesFullURL matchgroup=notesURLScheme start=@\<\(mailto:\|javascript:\|\w\{3,}://\)@ end=/\([[:punct:]]\s\|\s\|$\)\@=/ concealends
   highlight def link notesURLScheme notesFullURL
 else
   syntax match notesFullURL @\<\(mailto:\|javascript:\|\w\{3,}://\)\(\S*\w\)\+[/?#]\?@
@@ -132,4 +132,4 @@ highlight def link notesModeLine LineNr
 " Set the currently loaded syntax mode.
 let b:current_syntax = 'notes'
 
-" vim: ts=2 sw=2 et bomb
+" vim: ts=2 sw=2 et bomb fdl=1

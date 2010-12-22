@@ -26,10 +26,14 @@ notes in Vim:
    highlighting using blocks marked with '{{{type … }}}' which allows you to
    embed highlighted code and configuration snippets in your notes
 
+Here's a screen shot of the syntax mode using the slate [3] color scheme:
+
+    Syntax mode screen shot, see reference [4]
+
 ==============================================================================
 Install & usage ~
 
-Unzip the most recent ZIP archive file inside your Vim profile directory
+Unzip the most recent ZIP archive [5] file inside your Vim profile directory
 (usually this is '~/.vim' on UNIX and '%USERPROFILE%\vimfiles' on Windows),
 restart Vim and execute the command ':helptags ~/.vim/doc' (use ':helptags
 ~\vimfiles\doc' instead on Windows). To get started execute ':NewNote'.
@@ -40,11 +44,12 @@ Contact ~
 If you have questions, bug reports, suggestions, etc. the author can be
 contacted at peter@peterodding.com. The latest version is available at
 http://peterodding.com/code/vim/notes/ and http://github.com/xolox/vim-notes.
+If you like the script please vote for it on Vim Online [6].
 
 ==============================================================================
 License ~
 
-This software is licensed under the MIT license [3].
+This software is licensed under the MIT license [7].
 © 2010 Peter Odding <peter@peterodding.com>.
 
 ==============================================================================
@@ -52,6 +57,10 @@ References ~
 
 [1] http://python.org/
 [2] http://sqlite.org/
-[3] http://en.wikipedia.org/wiki/MIT_License
+[3] http://code.google.com/p/vim/source/browse/runtime/colors/slate.vim
+[4] http://peterodding.com/code/vim/notes/syntax.png
+[5] http://peterodding.com/code/vim/downloads/notes
+[6] http://www.vim.org/scripts/script.php?script_id=3375
+[7] http://en.wikipedia.org/wiki/MIT_License
 
 vim: syntax=help nospell
