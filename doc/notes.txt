@@ -36,7 +36,8 @@ Install & usage ~
 Unzip the most recent ZIP archive [5] file inside your Vim profile directory
 (usually this is '~/.vim' on UNIX and '%USERPROFILE%\vimfiles' on Windows),
 restart Vim and execute the command ':helptags ~/.vim/doc' (use ':helptags
-~\vimfiles\doc' instead on Windows). To get started execute ':NewNote'.
+~\vimfiles\doc' instead on Windows). To get started execute ':NewNote' or
+':edit note:'.
 
 ==============================================================================
 Contact ~
