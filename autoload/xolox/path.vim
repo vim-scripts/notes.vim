@@ -1,6 +1,6 @@
 " Vim script
 " Maintainer: Peter Odding <peter@peterodding.com>
-" Last Change: June 15, 2010
+" Last Change: December 28, 2010
 " URL: http://peterodding.com/code/vim/profile/autoload/xolox/path.vim
 
 let s:windows_compatible = has('win32') || has('win64')
@@ -68,12 +68,12 @@ endfunction
 
 " merge() -- join a directory and filename into a single pathname {{{1
 
-function! xolox#path#merge(parent, child)
+function! xolox#path#merge(parent, child, ...)
   if type(a:parent) == type('') && type(a:child) == type('')
     if s:windows_compatible
       let parent = substitute(a:parent, '[\\/]\+$', '', '')
       let child = substitute(a:child, '^[\\/]\+', '', '')
-      return parent . '/' . child
+      return parent . '\' . child
     else
       let parent = substitute(a:parent, '/\+$', '', '')
       let child = substitute(a:child, '^/\+', '', '')

@@ -1,6 +1,6 @@
 ﻿" Vim auto-load script
 " Author: Peter Odding <peter@peterodding.com>
-" Last Change: December 22, 2010
+" Last Change: December 25, 2010
 " URL: http://peterodding.com/code/vim/notes/
 
 " Note: This file is encoded in UTF-8 including a byte order mark so
@@ -24,12 +24,17 @@ function! xolox#notes#rename() " {{{1
   " When the current note's title is changed, automatically rename the buffer.
   if &filetype == 'notes' && &modified && line('.') > 1
     let oldpath = expand('%:p')
-    let newpath = xolox#notes#title_to_fname(getline(1))
+    let title = getline(1)
+    let newpath = xolox#notes#title_to_fname(title)
     if newpath != '' && !xolox#path#equals(oldpath, newpath)
-      if oldpath != '' && !exists('b:notes_oldfname')
-        let b:notes_oldfname = oldpath
+      if oldpath != ''
+        call xolox#notes#cache_del(oldpath)
+        if !exists('b:notes_oldfname')
+          let b:notes_oldfname = oldpath
+        endif
       endif
       execute 'silent file' fnameescape(newpath)
+      call xolox#notes#cache_add(newpath, title)
       " Redraw tab line with new filename.
       let &stal = &stal
     endif
@@ -276,6 +281,16 @@ endfunction
 
 " Getters for filenames & titles of existing notes. {{{2
 
+if !exists('s:cache_mtime')
+  let s:have_cached_names = 0
+  let s:have_cached_titles = 0
+  let s:have_cached_items = 0
+  let s:cached_fnames = []
+  let s:cached_titles = []
+  let s:cached_pairs = {}
+  let s:cache_mtime = 0
+endif
+
 function! xolox#notes#get_fnames() " {{{3
   " Get list with filenames of all existing notes.
   if !s:have_cached_names
@@ -291,11 +306,6 @@ function! xolox#notes#get_fnames() " {{{3
   return copy(s:cached_fnames)
 endfunction
 
-if !exists('s:cached_fnames')
-  let s:have_cached_names = 0
-  let s:cached_fnames = []
-endif
-
 function! xolox#notes#get_titles() " {{{3
   " Get list with titles of all existing notes.
   if !s:have_cached_titles
@@ -308,11 +318,6 @@ function! xolox#notes#get_titles() " {{{3
   endif
   return copy(s:cached_titles)
 endfunction
-
-if !exists('s:cached_titles')
-  let s:have_cached_titles = 0
-  let s:cached_titles = []
-endif
 
 function! xolox#notes#get_fnames_and_titles() " {{{3
   " Get dictionary of filename => title pairs of all existing notes.
@@ -331,11 +336,6 @@ function! xolox#notes#get_fnames_and_titles() " {{{3
   endif
   return s:cached_pairs
 endfunction
-
-if !exists('s:cached_pairs')
-  let s:have_cached_items = 0
-  let s:cached_pairs = {}
-endif
 
 function! xolox#notes#fname_to_title(filename) " {{{3
   " Convert absolute note {filename} to title.
@@ -363,6 +363,7 @@ function! xolox#notes#cache_add(filename, title) " {{{3
     if !empty(s:cached_pairs)
       let s:cached_pairs[filename] = a:title
     endif
+    let s:cache_mtime = localtime()
   endif
 endfunction
 
@@ -378,6 +379,14 @@ function! xolox#notes#cache_del(filename) " {{{3
     if !empty(s:cached_pairs)
       call remove(s:cached_pairs, filename)
     endif
+    let s:cache_mtime = localtime()
+  endif
+endfunction
+
+function! xolox#notes#unload_from_cache() " {{{3
+  let bufname = expand('<afile>:p')
+  if !filereadable(bufname)
+    call xolox#notes#cache_del(bufname)
   endif
 endfunction
 
@@ -405,14 +414,18 @@ function! xolox#notes#indent_list(command, line1, line2) " {{{3
   normal $
 endfunction
 
-function! xolox#notes#highlight_names(group) " {{{3
-  " Highlight the names of all notes as {group}.
-  let starttime = xolox#timer#start()
-  let titles = filter(xolox#notes#get_titles(), '!empty(v:val)')
-  call map(titles, 's:words_to_pattern(v:val)')
-  call sort(titles, 's:sort_longest_to_shortest')
-  execute 'syntax match' a:group '/\c\%>2l\%(' . escape(join(titles, '\|'), '/') . '\)/'
-  call xolox#timer#stop("%s: Highlighted note names in %s.", s:script, starttime)
+function! xolox#notes#highlight_names(force) " {{{3
+  " Highlight the names of all notes as "notesName" (linked to "Underlined").
+  if a:force || !(exists('b:notes_names_last_highlighted') && b:notes_names_last_highlighted > s:cache_mtime)
+    let starttime = xolox#timer#start()
+    let titles = filter(xolox#notes#get_titles(), '!empty(v:val)')
+    call map(titles, 's:words_to_pattern(v:val)')
+    call sort(titles, 's:sort_longest_to_shortest')
+    syntax clear notesName
+    execute 'syntax match notesName /\c\%>2l\%(' . escape(join(titles, '\|'), '/') . '\)/'
+    let b:notes_names_last_highlighted = localtime()
+    call xolox#timer#stop("%s: Highlighted note names in %s.", s:script, starttime)
+  endif
 endfunction
 
 function! s:words_to_pattern(words)
