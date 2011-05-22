@@ -1,12 +1,12 @@
 " Vim plug-in
 " Author: Peter Odding <peter@peterodding.com>
-" Last Change: January 7, 2011
+" Last Change: May 22, 2011
 " URL: http://peterodding.com/code/vim/notes/
 " License: MIT
-" Version: 0.8.2
+" Version: 0.8.7
 
 " Support for automatic update using the GLVS plug-in.
-" GetLatestVimScripts: 3375 1 :AutoInstall: session.zip
+" GetLatestVimScripts: 3375 1 :AutoInstall: notes.zip
 
 " Don't source the plug-in when its already been loaded or &compatible is set.
 if &cp || exists('g:loaded_notes')
@@ -49,8 +49,14 @@ function! s:DAC(events, directory, command)
   " Resolve the path to the directory with notes so that the automatic command
   " also applies to symbolic links pointing to notes (Vim matches filename
   " patterns in automatic commands after resolving filenames).
-  let directory = xolox#path#absolute(a:directory)
-  let pattern = xolox#path#merge(fnameescape(directory), '*')
+  let directory = xolox#misc#path#absolute(a:directory)
+  " On Windows we have to replace backslashes with forward slashes.
+  if xolox#misc#os#is_win()
+    let directory = substitute(directory, '\\', '/', 'g')
+  endif
+  let pattern = fnameescape(directory) . '/*'
+  " On Windows the pattern won't match if it contains repeating slashes.
+  let pattern = substitute(pattern, '/\+', '/', 'g')
   execute 'autocmd' a:events pattern a:command
 endfunction
 
@@ -59,6 +65,7 @@ augroup PluginNotes
   " NB: "nested" is used here so that SwapExists automatic commands apply
   " to notes (which is IMHO better than always showing the E325 prompt).
   au BufReadCmd note:* nested call xolox#notes#shortcut()
+  call s:DAC('BufReadCmd', g:notes_shadowdir, 'call xolox#notes#edit_shadow()')
   call s:DAC('BufWriteCmd', g:notes_directory, 'call xolox#notes#save()')
   au SwapExists * call xolox#notes#swaphack()
   au WinEnter * if &ft == 'notes' | call xolox#notes#highlight_names(0) | endif

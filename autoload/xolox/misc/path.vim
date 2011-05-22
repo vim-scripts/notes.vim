@@ -1,13 +1,13 @@
-" Vim script
-" Maintainer: Peter Odding <peter@peterodding.com>
-" Last Change: December 28, 2010
-" URL: http://peterodding.com/code/vim/profile/autoload/xolox/path.vim
+" Vim auto-load script
+" Author: Peter Odding <peter@peterodding.com>
+" Last Change: March 15, 2011
+" URL: http://peterodding.com/code/vim/misc/
 
 let s:windows_compatible = has('win32') || has('win64')
 
-" split() -- split a pathname into a list of path components {{{1
+" Split a pathname into a list of path components.
 
-function! xolox#path#split(path)
+function! xolox#misc#path#split(path)
   if type(a:path) == type('')
     if s:windows_compatible
       return split(a:path, '[\/]\+')
@@ -20,9 +20,9 @@ function! xolox#path#split(path)
   return []
 endfunction
 
-" join() -- join a list of path components into a pathname {{{1
+" Join a list of path components into a pathname.
 
-function! xolox#path#join(parts)
+function! xolox#misc#path#join(parts)
   if type(a:parts) == type([])
     if !s:windows_compatible && a:parts[0] == '/'
       return join(a:parts, '/')[1 : -1]
@@ -33,9 +33,9 @@ function! xolox#path#join(parts)
   return ''
 endfunction
 
-" absolute() -- canonicalize and resolve a pathname {{{1
+" Canonicalize and resolve a pathname.
 
-function! xolox#path#absolute(path)
+function! xolox#misc#path#absolute(path)
   if type(a:path) == type('')
     let path = fnamemodify(a:path, ':p')
     " resolve() doesn't work when there's a trailing path separator.
@@ -53,22 +53,22 @@ function! xolox#path#absolute(path)
   return ''
 endfunction
 
-" relative() -- make an absolute pathname relative {{{1
+" Make an absolute pathname relative.
 
-function! xolox#path#relative(path, base)
-  let path = xolox#path#split(a:path)
-  let base = xolox#path#split(a:base)
+function! xolox#misc#path#relative(path, base)
+  let path = xolox#misc#path#split(a:path)
+  let base = xolox#misc#path#split(a:base)
   while path != [] && base != [] && path[0] == base[0]
     call remove(path, 0)
     call remove(base, 0)
   endwhile
   let distance = repeat(['..'], len(base))
-  return xolox#path#join(distance + path)
+  return xolox#misc#path#join(distance + path)
 endfunction
 
-" merge() -- join a directory and filename into a single pathname {{{1
+" Join a directory and filename into a single pathname.
 
-function! xolox#path#merge(parent, child, ...)
+function! xolox#misc#path#merge(parent, child, ...)
   if type(a:parent) == type('') && type(a:child) == type('')
     if s:windows_compatible
       let parent = substitute(a:parent, '[\\/]\+$', '', '')
@@ -83,13 +83,13 @@ function! xolox#path#merge(parent, child, ...)
   return ''
 endfunction
 
-" commonprefix() -- find the common prefix of path components in a list of pathnames {{{1
+" Find the common prefix of path components in a list of pathnames.
 
-function! xolox#path#commonprefix(paths)
-  let common = xolox#path#split(a:paths[0])
+function! xolox#misc#path#commonprefix(paths)
+  let common = xolox#misc#path#split(a:paths[0])
   for path in a:paths
     let index = 0
-    for segment in xolox#path#split(path)
+    for segment in xolox#misc#path#split(path)
       if len(common) <= index
         break
       elseif common[index] != segment
@@ -99,37 +99,37 @@ function! xolox#path#commonprefix(paths)
       let index += 1
     endfor
   endfor
-  return xolox#path#join(common)
+  return xolox#misc#path#join(common)
 endfunction
 
-" encode() -- encode a pathname so it can be used as a filename {{{1
+" Encode a pathname so it can be used as a filename.
 
-function! xolox#path#encode(path)
+function! xolox#misc#path#encode(path)
   let mask = s:windows_compatible ? '[*|\\/:"<>?%]' : '[\\/%]'
   return substitute(a:path, mask, '\=printf("%%%x", char2nr(submatch(0)))', 'g')
 endfunction
 
-" decode() -- decode a pathname previously encoded with xolox#path#encode() {{{1
+" Decode a pathname previously encoded with xolox#misc#path#encode().
 
-function! xolox#path#decode(encoded_path)
+function! xolox#misc#path#decode(encoded_path)
   return substitute(a:encoded_path, '%\(\x\x\?\)', '\=nr2char("0x" . submatch(1))', 'g')
 endfunction
 
-" equals() -- check whether two pathnames point to the same file {{{1
+" Check whether two pathnames point to the same file.
 
 if s:windows_compatible
-  function! xolox#path#equals(a, b)
-    return a:a ==? a:b || xolox#path#absolute(a:a) ==? xolox#path#absolute(a:b)
+  function! xolox#misc#path#equals(a, b)
+    return a:a ==? a:b || xolox#misc#path#absolute(a:a) ==? xolox#misc#path#absolute(a:b)
   endfunction
 else
-  function! xolox#path#equals(a, b)
-    return a:a ==# a:b || xolox#path#absolute(a:a) ==# xolox#path#absolute(a:b)
+  function! xolox#misc#path#equals(a, b)
+    return a:a ==# a:b || xolox#misc#path#absolute(a:a) ==# xolox#misc#path#absolute(a:b)
   endfunction
 endif
 
-" tempdir() -- create a temporary directory and return the path {{{1
+" Create a temporary directory and return the path.
 
-function! xolox#path#tempdir()
+function! xolox#misc#path#tempdir()
   if !exists('s:tempdir_counter')
     let s:tempdir_counter = 1
   endif
@@ -141,7 +141,7 @@ function! xolox#path#tempdir()
     endif
   endif
   if !exists('template')
-    throw "xolox#path#tempdir() hasn't been implemented on your platform!"
+    throw "xolox#misc#path#tempdir() hasn't been implemented on your platform!"
   endif
   while 1
     let directory = template . s:tempdir_counter
