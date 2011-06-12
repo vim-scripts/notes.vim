@@ -1,6 +1,6 @@
 ﻿" Vim auto-load script
 " Author: Peter Odding <peter@peterodding.com>
-" Last Change: June 4, 2011
+" Last Change: June 11, 2011
 " URL: http://peterodding.com/code/vim/notes/
 
 " Note: This file is encoded in UTF-8 including a byte order mark so
@@ -49,6 +49,25 @@ function! xolox#notes#edit(bang, title) abort " {{{1
   endif
   doautocmd BufReadPost
   call xolox#misc#timer#stop('%s: Started new note in %s.', s:script, starttime)
+endfunction
+
+function! xolox#notes#from_selection(bang) " {{{1
+  " TODO This will always open a new buffer in the current window which I
+  " don't consider very friendly (because the user loses his/her context),
+  " but choosing to always split the window doesn't seem right either...
+  call xolox#notes#edit(a:bang, s:get_visual_selection())
+endfunction
+
+function! s:get_visual_selection()
+  " Why is this not a built-in Vim script function?! See also the question at
+  " http://stackoverflow.com/questions/1533565 but note that none of the code
+  " posted there worked for me so I wrote this function.
+  let [lnum1, col1] = getpos("'<")[1:2]
+  let [lnum2, col2] = getpos("'>")[1:2]
+  let lines = getline(lnum1, lnum2)
+  let lines[-1] = lines[-1][: col2 - 2]
+  let lines[0] = lines[0][col1 - 1:]
+  return join(lines, ' ')
 endfunction
 
 function! xolox#notes#edit_shadow() " {{{1
@@ -104,7 +123,7 @@ function! xolox#notes#select(filter) " {{{1
   return ''
 endfunction
 
-function! xolox#notes#complete(arglead, cmdline, cursorpos) " {{{1
+function! xolox#notes#cmd_complete(arglead, cmdline, cursorpos) " {{{1
   " Vim's support for custom command completion is a real mess, specifically
   " the completion of multi word command arguments. With or without escaping
   " of spaces, arglead will only contain the last word in the arguments passed
@@ -138,6 +157,25 @@ function! xolox#notes#complete(arglead, cmdline, cursorpos) " {{{1
   return titles
 endfunction
 
+function! xolox#notes#user_complete(findstart, base) " {{{1
+  if a:findstart
+    let line = getline('.')[0 : col('.') - 2]
+    let words = split(line)
+    if !empty(words)
+      return col('.') - len(words[-1]) - 1
+    else
+      return -1
+    endif
+  else
+    let titles = xolox#notes#get_titles()
+    if !empty(a:base)
+      let pattern = xolox#misc#escape#pattern(a:base)
+      call filter(titles, 'v:val =~ pattern')
+    endif
+    return titles
+  endif
+endfunction
+
 function! xolox#notes#save() abort " {{{1
   " When the current note's title is changed, automatically rename the file.
   if &filetype == 'notes'
@@ -146,10 +184,22 @@ function! xolox#notes#save() abort " {{{1
     let newpath = xolox#notes#title_to_fname(title)
     if newpath == ''
       echoerr "Invalid note title"
+      return
     endif
     let bang = v:cmdbang ? '!' : ''
     execute 'saveas' bang fnameescape(newpath)
+    " XXX If {oldpath} and {newpath} end up pointing to the same file on disk
+    " yet xolox#misc#path#equals() doesn't catch this, we might end up
+    " deleting the user's one and only note! One way to circumvent this
+    " potential problem is to first delete the old note and then save the new
+    " note. The problem with this approach is that :saveas might fail in which
+    " case we've already deleted the old note...
     if !xolox#misc#path#equals(oldpath, newpath)
+      if !filereadable(newpath)
+        let message = "The notes plug-in tried to rename your note but failed to create %s so won't delete %s or you could lose your note! This should never happen... If you don't mind me borrowing some of your time, please contact me at peter@peterodding.com and include the old and new filename so that I can try to reproduce the issue. Thanks!"
+        call confirm(printf(message, string(newpath), string(oldpath)))
+        return
+      endif
       call delete(oldpath)
     endif
     call xolox#notes#cache_del(oldpath)
@@ -257,6 +307,78 @@ function! xolox#notes#related(bang) " {{{1
       call xolox#misc#msg#warn("%s: No related notes found for %s", s:script, friendly_path)
     endtry
   endif
+endfunction
+
+function! xolox#notes#recent(bang, title_filter) " {{{1
+  let start = xolox#misc#timer#start()
+  let bufname = '[All Notes]'
+  " Open buffer that holds list of notes.
+  if !bufexists(bufname)
+    execute 'hide edit' fnameescape(bufname)
+    setlocal buftype=nofile nospell
+  else
+    execute 'hide buffer' fnameescape(bufname)
+    setlocal noreadonly modifiable
+    silent %delete
+  endif
+  " Filter notes by pattern (argument)?
+  let notes = []
+  let title_filter = '\v' . a:title_filter
+  for [fname, title] in items(xolox#notes#get_fnames_and_titles())
+    if title =~? title_filter
+      call add(notes, [getftime(fname), title])
+    endif
+  endfor
+  " Start note with title and short description.
+  let readme = "You have "
+  if empty(notes)
+    let readme .= "no notes"
+  elseif len(notes) == 1
+    let readme .= "one note"
+  else
+    let readme .= len(notes) . " notes"
+  endif
+  if a:title_filter != ''
+    let quote_format = xolox#notes#unicode_enabled() ? '‘%s’' : "`%s'"
+    let readme .= " matching " . printf(quote_format, a:title_filter)
+  endif
+  if empty(notes)
+    let readme .= "."
+  elseif len(notes) == 1
+    let readme .= ", it's listed below."
+  else
+    let readme .= ". They're listed below grouped by the day they were edited, starting with your most recently edited note."
+  endif
+  call setline(1, ["All notes", "", readme])
+  normal Ggqq
+  " Sort, group and format list of (matching) notes.
+  let last_date = ''
+  let list_item_format = xolox#notes#unicode_enabled() ? ' • %s' : ' * %s'
+  let date_format = '%A, %B %d:'
+  let today = strftime(date_format, localtime())
+  let yesterday = strftime(date_format, localtime() - 60*60*24)
+  call sort(notes)
+  call reverse(notes)
+  let lines = []
+  for [ftime, title] in notes
+    let date = strftime(date_format, ftime)
+    " Add date heading because date changed?
+    if date != last_date
+      call add(lines, '')
+      if date == today
+        call add(lines, "Today:")
+      elseif date == yesterday
+        call add(lines, "Yesterday:")
+      else
+        call add(lines, date)
+      endif
+      let last_date = date
+    endif
+    call add(lines, printf(list_item_format, title))
+  endfor
+  call setline(line('$') + 1, lines)
+  setlocal readonly nomodifiable nomodified filetype=notes
+  call xolox#misc#timer#stop("%s: Created list of notes in %s.", s:script, start)
 endfunction
 
 " Miscellaneous functions. {{{1
