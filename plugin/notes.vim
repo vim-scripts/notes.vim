@@ -1,6 +1,6 @@
 " Vim plug-in
 " Author: Peter Odding <peter@peterodding.com>
-" Last Change: July 9, 2011
+" Last Change: September 4, 2011
 " URL: http://peterodding.com/code/vim/notes/
 
 " Support for automatic update using the GLVS plug-in.
@@ -10,8 +10,6 @@
 if &cp || exists('g:loaded_notes')
   finish
 endif
-
-let g:notes_version = '0.10'
 
 " Make sure the default paths below are compatible with Pathogen.
 let s:plugindir = expand('<sfile>:p:h') . '/../misc/notes'
@@ -53,7 +51,8 @@ command! -bar -bang DeleteNote call xolox#notes#delete(<q-bang>)
 command! -bang -nargs=? SearchNotes call xolox#notes#search(<q-bang>, <q-args>)
 command! -bar -bang RelatedNotes call xolox#notes#related(<q-bang>)
 command! -bar -bang -nargs=? RecentNotes call xolox#notes#recent(<q-bang>, <q-args>)
-command! -bar -bang IndexTaggedNotes call xolox#notes#index_tagged_notes(<q-bang> == '!')
+command! -bar -count=1 ShowTaggedNotes call xolox#notes#tags#show_tags(<count>)
+command! -bar IndexTaggedNotes call xolox#notes#tags#create_index()
 
 " Automatic commands to enable the :edit note:… shortcut and load the notes file type.
 
