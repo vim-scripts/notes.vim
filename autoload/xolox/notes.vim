@@ -1,12 +1,12 @@
 ﻿" Vim auto-load script
 " Author: Peter Odding <peter@peterodding.com>
-" Last Change: October 23, 2011
+" Last Change: November 3, 2011
 " URL: http://peterodding.com/code/vim/notes/
 
 " Note: This file is encoded in UTF-8 including a byte order mark so
 " that Vim loads the script using the right encoding transparently.
 
-let g:xolox#notes#version = '0.12.2'
+let g:xolox#notes#version = '0.12.8'
 
 function! xolox#notes#shortcut() " {{{1
   " The "note:" pseudo protocol is just a shortcut for the :Note command.
@@ -298,6 +298,7 @@ endfunction
 
 function! xolox#notes#search(bang, input) " {{{1
   " Search all notes for the pattern or keywords {input} (current word if none given).
+  let starttime = xolox#misc#timer#start()
   let input = a:input
   if input == ''
     let input = s:tag_under_cursor()
@@ -322,6 +323,7 @@ function! xolox#notes#search(bang, input) " {{{1
           \ len(keywords) > 1 ? (join(keywords[0:-2], ', ') . ' and ' . keywords[-1]) : keywords[0])
     endif
   endif
+  call xolox#misc#timer#stop("notes.vim %s: Searched notes in %s.", g:xolox#notes#version, starttime)
 endfunction
 
 function! s:tag_under_cursor() " {{{2
@@ -357,6 +359,7 @@ endfunction
 
 function! xolox#notes#related(bang) " {{{1
   " Find all notes related to the current note or file.
+  let starttime = xolox#misc#timer#start()
   let bufname = bufname('%')
   if bufname == ''
     call xolox#misc#msg#warn("notes.vim %s: :RelatedNotes only works on named buffers!", g:xolox#notes#version)
@@ -385,10 +388,11 @@ function! xolox#notes#related(bang) " {{{1
       call xolox#misc#msg#warn("notes.vim %s: No related notes found for %s", g:xolox#notes#version, friendly_path)
     endtry
   endif
+  call xolox#misc#timer#stop("notes.vim %s: Found related notes in %s.", g:xolox#notes#version, starttime)
 endfunction
 
 function! xolox#notes#recent(bang, title_filter) " {{{1
-  let start = xolox#misc#timer#start()
+  let starttime = xolox#misc#timer#start()
   let bufname = '[All Notes]'
   " Open buffer that holds list of notes.
   if !bufexists(bufname)
@@ -446,7 +450,7 @@ function! xolox#notes#recent(bang, title_filter) " {{{1
   endfor
   call setline(line('$') + 1, lines)
   setlocal readonly nomodifiable nomodified filetype=notes
-  call xolox#misc#timer#stop("notes.vim %s: Created list of notes in %s.", g:xolox#notes#version, start)
+  call xolox#misc#timer#stop("notes.vim %s: Generated %s in %s.", g:xolox#notes#version, bufname, starttime)
 endfunction
 
 function! xolox#notes#buffer_is_note() " {{{1
@@ -471,7 +475,6 @@ endfunction
 
 function! s:internal_search(bang, pattern, keywords, phase2) " {{{2
   " Search notes for {pattern} regex, try to accelerate with {keywords} search.
-  let starttime = xolox#misc#timer#start()
   let bufnr_save = bufnr('%')
   let pattern = a:pattern
   silent cclose
@@ -483,7 +486,9 @@ function! s:internal_search(bang, pattern, keywords, phase2) " {{{2
       call xolox#misc#msg#warn("notes.vim %s: No matches", g:xolox#notes#version)
       return
     endif
-    let pattern = a:phase2 != '' ? a:phase2 : pattern
+    if a:phase2 != ''
+      let pattern = a:phase2
+    endif
   else
     call s:vimgrep_wrapper(a:bang, a:pattern, xolox#notes#get_fnames(0))
     let notes = s:qflist_to_filenames()
@@ -508,13 +513,7 @@ function! s:internal_search(bang, pattern, keywords, phase2) " {{{2
   endif
   silent cwindow
   if &buftype == 'quickfix'
-    setlocal ignorecase
-    execute 'match IncSearch' pattern
-  endif
-  call xolox#misc#timer#stop('notes.vim %s: Searched notes in %s.', g:xolox#notes#version, starttime)
-  if &verbose == 0
-    " Don't hang on the hit-enter prompt.
-    redraw
+    execute 'match IncSearch' substitute(pattern, '^/', '/\\c', '')
   endif
 endfunction
 
@@ -552,7 +551,7 @@ function! s:run_scanner(keywords, matches) " {{{2
   if !(executable(python) && filereadable(scanner))
     call xolox#misc#msg#debug("notes.vim %s: The %s script isn't executable.", g:xolox#notes#version, scanner)
   else
-    let arguments = [scanner, g:notes_indexfile, g:notes_directory, g:notes_shadowdir, a:keywords]
+    let arguments = [scanner, g:notes_indexfile, g:notes_directory, a:keywords]
     call map(arguments, 'shellescape(v:val)')
     let output = xolox#misc#str#trim(system(join([python] + arguments)))
     if !v:shell_error
@@ -857,27 +856,33 @@ endfunction
 
 function! xolox#notes#foldexpr() " {{{3
   " Folding expression to fold atx style Markdown headings.
-  if xolox#misc#option#get('notes_fold_ignore_code', 0)
-    let pos_save = getpos('.')
-    call setpos('.', [0, v:lnum, 1, 0])
-    let in_code = (search('{{{\|\(}}}\)', 'bnpW') == 1)
-    call setpos('.', pos_save)
-    if in_code
-      return '='
-    endif
-  endif
   let lastlevel = foldlevel(v:lnum - 1)
   let nextlevel = match(getline(v:lnum), '^#\+\zs')
+  let retval = '='
   if lastlevel <= 0 && nextlevel >= 1
-    return '>' . nextlevel
+    let retval = '>' . nextlevel
   elseif nextlevel >= 1
     if lastlevel > nextlevel
-      return '<' . nextlevel
+      let retval = '<' . nextlevel
     else
-      return '>' . nextlevel
+      let retval = '>' . nextlevel
     endif
   endif
-  return '='
+  if retval != '='
+    " Check whether the change in folding introduced by 'rv'
+    " is invalidated because we're inside a code block.
+    let pos_save = getpos('.')
+    try
+      call setpos('.', [0, v:lnum, 1, 0])
+      if search('{{{\|\(}}}\)', 'bnpW') == 1
+        let retval = '='
+      endif
+    finally
+      " Always restore the cursor position!
+      call setpos('.', pos_save)
+    endtry
+  endif
+  return retval
 endfunction
 
 function! xolox#notes#foldtext() " {{{3

@@ -1,6 +1,6 @@
 " Vim auto-load script
 " Author: Peter Odding <peter@peterodding.com>
-" Last Change: September 18, 2011
+" Last Change: November 3, 2011
 " URL: http://peterodding.com/code/vim/notes/
 
 if !exists('s:currently_tagged_notes')
@@ -112,6 +112,7 @@ endfunction
 
 function! xolox#notes#tags#show_tags(minsize) " {{{1
   " TODO Mappings to "zoom" in/out (show only big tags).
+  let starttime = xolox#misc#timer#start()
   call xolox#notes#tags#load_index()
   let lines = [s:buffer_name, '']
   if empty(s:currently_tagged_notes)
@@ -122,6 +123,7 @@ function! xolox#notes#tags#show_tags(minsize) " {{{1
     for title in xolox#notes#get_titles(0)
       let unmatched[title] = 1
     endfor
+    let totalnotes = len(unmatched)
     " Group matching notes and remove them from the dictionary.
     let grouped_notes = []
     let numtags = 0
@@ -157,8 +159,9 @@ function! xolox#notes#tags#show_tags(minsize) " {{{1
       endif
     endfor
     if a:minsize <= 1
-      let message = printf("You've used %i %s in your notes",
-            \ numtags, numtags == 1 ? "tag" : "tags")
+      let message = printf("You've used %i %s in %i %s",
+            \ numtags, numtags == 1 ? "tag" : "tags",
+            \ totalnotes, totalnotes == 1 ? "note" : "notes")
     else
       let message = printf("There %s %i %s that %s been used at least %s times",
             \ numtags == 1 ? "is" : "are", numtags,
@@ -183,6 +186,7 @@ function! xolox#notes#tags#show_tags(minsize) " {{{1
   call setline(1, lines)
   call xolox#misc#buffer#lock()
   setlocal filetype=notes nospell wrap
+  call xolox#misc#timer#stop('notes.vim %s: Generated [%s] in %s.', g:xolox#notes#version, s:buffer_name, starttime)
 endfunction
 
 function! xolox#notes#tags#friendly_name(tagname) " {{{1
