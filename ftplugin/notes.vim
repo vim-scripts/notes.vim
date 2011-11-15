@@ -1,6 +1,6 @@
 " Vim file type plug-in
 " Author: Peter Odding <peter@peterodding.com>
-" Last Change: October 18, 2011
+" Last Change: November 15, 2011
 " URL: http://peterodding.com/code/vim/notes/
 
 if exists('b:did_ftplugin')
@@ -9,13 +9,9 @@ else
   let b:did_ftplugin = 1
 endif
 
-" Disable highlighting of matching pairs. {{{1
-setlocal matchpairs=
-let b:undo_ftplugin = 'set matchpairs<'
-
 " Copy indent from previous line. {{{1
 setlocal autoindent
-let b:undo_ftplugin .= ' | set autoindent<'
+let b:undo_ftplugin = 'set autoindent<'
 
 " Set &tabstop and &shiftwidth options for bulleted lists. {{{1
 setlocal tabstop=3 shiftwidth=3 expandtab
@@ -60,19 +56,21 @@ let b:undo_ftplugin .= ' | execute "iunmap <buffer> @"'
 set completeopt+=longest
 
 " Change double-dash to em-dash as it is typed. {{{1
-if xolox#notes#unicode_enabled()
+if g:notes_smart_quotes && xolox#notes#unicode_enabled()
   imap <buffer> -- —
   let b:undo_ftplugin .= ' | execute "iunmap <buffer> --"'
 endif
 
 " Change plain quotes to curly quotes as they're typed. {{{1
-imap <buffer> <expr> ' xolox#notes#insert_quote(1)
-imap <buffer> <expr> " xolox#notes#insert_quote(2)
-let b:undo_ftplugin .= ' | execute "iunmap <buffer> ''"'
-let b:undo_ftplugin .= ' | execute ''iunmap <buffer> "'''
+if g:notes_smart_quotes
+  imap <buffer> <expr> ' xolox#notes#insert_quote(1)
+  imap <buffer> <expr> " xolox#notes#insert_quote(2)
+  let b:undo_ftplugin .= ' | execute "iunmap <buffer> ''"'
+  let b:undo_ftplugin .= ' | execute ''iunmap <buffer> "'''
+endif
 
 " Change ASCII style arrows to Unicode arrows. {{{1
-if xolox#notes#unicode_enabled()
+if g:notes_smart_quotes && xolox#notes#unicode_enabled()
   imap <buffer> -> →
   imap <buffer> <- ←
   let b:undo_ftplugin .= ' | execute "iunmap <buffer> ->"'
@@ -80,12 +78,14 @@ if xolox#notes#unicode_enabled()
 endif
 
 " Convert ASCII list bullets to Unicode bullets. {{{1
-imap <buffer> <expr> - xolox#notes#insert_bullet('-')
-imap <buffer> <expr> + xolox#notes#insert_bullet('+')
-imap <buffer> <expr> * xolox#notes#insert_bullet('*')
-let b:undo_ftplugin .= ' | execute "iunmap <buffer> -"'
-let b:undo_ftplugin .= ' | execute "iunmap <buffer> +"'
-let b:undo_ftplugin .= ' | execute "iunmap <buffer> *"'
+if g:notes_smart_quotes
+  imap <buffer> <expr> - xolox#notes#insert_bullet('-')
+  imap <buffer> <expr> + xolox#notes#insert_bullet('+')
+  imap <buffer> <expr> * xolox#notes#insert_bullet('*')
+  let b:undo_ftplugin .= ' | execute "iunmap <buffer> -"'
+  let b:undo_ftplugin .= ' | execute "iunmap <buffer> +"'
+  let b:undo_ftplugin .= ' | execute "iunmap <buffer> *"'
+endif
 
 " Indent list items using <Tab>. {{{1
 imap <buffer> <silent> <Tab> <C-o>:call xolox#notes#indent_list('>>', line('.'), line('.'))<CR>

@@ -28,9 +28,11 @@ Unzip the most recent [ZIP archive] [download] file inside your Vim profile dire
 
 ## Options
 
-All options have reasonable defaults so if the plug-in works after installation you don't need to change any options. They're available for people who like to customize their directory layout. These options can be configured in your [vimrc] [vimrc] by including a line like this:
+All options have reasonable defaults so if the plug-in works after installation you don't need to change any options. They're available for people who like to customize their directory layout. These options can be configured in your [vimrc script] [vimrc] by including a line like this:
 
     let g:notes_directory = '~/Documents/Notes'
+
+Note that after changing an option in your [vimrc script] [vimrc] you have to restart Vim for the changes to take effect.
 
 ### The `g:notes_directory` option
 
@@ -47,6 +49,21 @@ The suffix to add to generated filenames. The plug-in generates filenames for yo
 When you rename a file in your notes directory but don't change the title, the plug-in will notice this the next time you open the note in Vim. Likewise when you change the title in another text editor but don't rename the file. By default the plug-in will prompt you whether you want it to update the title of the note, rename the file on disk or dismiss the prompt without doing anything.
 
 If you set this option to the string `'no'` this feature will be completely disabled. If you set it to `'change_title'` it will automatically change the title to match the filename. If you set it to `'rename_file'` it will automatically rename the file on disk to match the title.
+
+### The `g:notes_smart_quotes` option
+
+By default the notes plug-in automatically performs several substitutions on the text you type in insert mode. Here are those substitutions:
+
+ * `'` becomes `‘` or `’` depending on where you type it
+ * `"` becomes `“` or `”` (same goes for these)
+ * `--` becomes `—`
+ * `->` becomes `→`
+ * `<-` becomes `←`
+ * the bullets `*`, `+` and `-` become `•`
+
+If you don't want the plug-in to perform these substitutions, you can set this option to zero like this:
+
+    :let g:notes_smart_quotes = 0
 
 ### The `g:notes_shadowdir` option
 
@@ -106,7 +123,6 @@ To search for one or more keywords you can just omit the slashes, this matches n
 
 If you don't pass any arguments to the `:SearchNotes` command it will search for the word under the cursor. If the word under the cursor starts with '@' this character will be included in the search, which makes it possible to easily add *@tags* to your *@notes* and then search for those tags. To make searching for tags even easier you can create key mappings for the `:SearchNotes` command:
 
-
     " Make the C-] combination search for @tags:
     imap <C-]> <C-o>:SearchNotes<CR>
     nmap <C-]> :SearchNotes<CR>
@@ -135,7 +151,7 @@ If you execute the `:RecentNotes` command it will open a Vim buffer that lists a
 
 ### The `:ShowTaggedNotes` command
 
-To show a list of all notes that contains *@tags@* you can use the `:ShowTaggedNotes` command. If you pass a count to this command it will limit the list of tags to those that have been used at least this many times. For example the following two commands show tags that have been used at least ten times:
+To show a list of all notes that contains *@tags* you can use the `:ShowTaggedNotes` command. If you pass a count to this command it will limit the list of tags to those that have been used at least this many times. For example the following two commands show tags that have been used at least ten times:
 
     :10ShowTaggedNotes
     :ShowTaggedNotes 10
