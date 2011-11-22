@@ -20,6 +20,12 @@ import pickle
 import re
 import sys
 
+try:
+  import Levenshtein
+  levenshtein_supported = True
+except ImportError:
+  levenshtein_supported = False
+
 class NotesIndex:
 
   def __init__(self):
@@ -29,14 +35,17 @@ class NotesIndex:
     self.update_index()
     if self.dirty:
       self.save_index()
-    matches = self.search_index(keywords)
-    print '\n'.join(sorted(matches))
+    if self.keyword_filter is not None:
+      self.list_keywords(self.keyword_filter)
+    else:
+      matches = self.search_index(keywords)
+      print self.encode('\n'.join(sorted(matches)))
 
   def parse_args(self):
     ''' Parse the command line arguments. '''
     try:
-      opts, keywords = getopt.getopt(sys.argv[1:], 'd:n:e:h',
-          ['database=', 'notes=', 'encoding=', 'help'])
+      opts, keywords = getopt.getopt(sys.argv[1:], 'l:d:n:e:h',
+          ['list=', 'database=', 'notes=', 'encoding=', 'help'])
     except getopt.GetoptError, error:
       print str(error)
       self.usage()
@@ -45,9 +54,12 @@ class NotesIndex:
     self.database_file = '~/.vim/misc/notes/index.pickle'
     self.user_directory = '~/.vim/misc/notes/user/'
     self.character_encoding = 'UTF-8'
+    self.keyword_filter = None
     # Map command line options to variables.
     for opt, arg in opts:
-      if opt in ('-d', '--database'):
+      if opt in ('-l', '--list'):
+        self.keyword_filter = arg.strip().lower()
+      elif opt in ('-d', '--database'):
         self.database_file = arg
       elif opt in ('-n', '--notes'):
         self.user_directory = arg
@@ -58,6 +70,8 @@ class NotesIndex:
         sys.exit(0)
       else:
         assert False, "Unhandled option"
+    if self.keyword_filter is not None:
+      self.keyword_filter = self.decode(self.keyword_filter)
     # Canonicalize pathnames, check validity.
     self.database_file = self.munge_path(self.database_file)
     self.user_directory = self.munge_path(self.user_directory)
@@ -72,7 +86,7 @@ class NotesIndex:
     try:
       with open(self.database_file) as handle:
         self.index = pickle.load(handle)
-        assert self.index['version'] >= 1
+        assert self.index['version'] == 1
         self.first_use = False
         self.dirty = False
     except:
@@ -141,15 +155,36 @@ class NotesIndex:
         matches &= set(filenames)
     return list(matches) if matches else []
 
+  def list_keywords(self, substring, limit=25):
+    ''' Print all (matching) keywords to standard output. '''
+    decorated = []
+    for kw, filenames in self.index['keywords'].iteritems():
+      if substring in kw.lower():
+        if levenshtein_supported:
+          decorated.append((Levenshtein.distance(kw.lower(), substring), -len(filenames), kw))
+        else:
+          decorated.append((-len(filenames), kw))
+    decorated.sort()
+    selection = [d[-1] for d in decorated[:limit]]
+    print self.encode('\n'.join(selection))
+
   def tokenize(self, text):
     ''' Tokenize a string into a list of normalized, unique keywords. '''
     words = set()
-    text = text.decode(self.character_encoding, 'ignore')
-    for word in re.findall(r'\w+', text.lower(), re.UNICODE):
+    text = self.decode(text).lower()
+    for word in re.findall(r'\w+', text, re.UNICODE):
       word = word.strip()
       if word != '' and not word.isspace():
         words.add(word)
     return words
+
+  def encode(self, text):
+    ''' Encode a string in the user's preferred character encoding. '''
+    return text.encode(self.character_encoding, 'ignore')
+
+  def decode(self, text):
+    ''' Decode a string in the user's preferred character encoding. '''
+    return text.decode(self.character_encoding, 'ignore')
 
   def munge_path(self, path):
     ''' Canonicalize user-defined path, making it absolute. '''
@@ -164,6 +199,7 @@ updated automatically during each invocation of the program.
 
 Valid options include:
 
+  -l, --list=SUBSTR    list keywords matching substring
   -d, --database=FILE  set path to keywords index file
   -n, --notes=DIR      set directory with user notes
   -e, --encoding=NAME  set character encoding of notes
