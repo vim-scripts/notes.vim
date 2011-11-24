@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
-# Copyright 2011 Peter Odding <peter@peterodding.com>
-# This program is licensed under the MIT license.
+# Python script for fast text file searching using keyword index on disk.
+#
+# Author: Peter Odding <peter@peterodding.com>
+# Last Change: November 24, 2011
+# URL: http://peterodding.com/code/vim/notes/
+# License: MIT
 #
 # This Python script can be used by the notes.vim plug-in to perform fast
 # keyword searches in the user's notes. It has two advantages over just using
@@ -39,13 +43,13 @@ class NotesIndex:
       self.list_keywords(self.keyword_filter)
     else:
       matches = self.search_index(keywords)
-      print self.encode('\n'.join(sorted(matches)))
+      print '\n'.join(sorted(matches))
 
   def parse_args(self):
     ''' Parse the command line arguments. '''
     try:
-      opts, keywords = getopt.getopt(sys.argv[1:], 'l:d:n:e:h',
-          ['list=', 'database=', 'notes=', 'encoding=', 'help'])
+      opts, keywords = getopt.getopt(sys.argv[1:], 'l:d:n:e:vh',
+          ['list=', 'database=', 'notes=', 'encoding=', 'verbose', 'help'])
     except getopt.GetoptError, error:
       print str(error)
       self.usage()
@@ -55,6 +59,7 @@ class NotesIndex:
     self.user_directory = '~/.vim/misc/notes/user/'
     self.character_encoding = 'UTF-8'
     self.keyword_filter = None
+    self.verbose = False
     # Map command line options to variables.
     for opt, arg in opts:
       if opt in ('-l', '--list'):
@@ -65,6 +70,8 @@ class NotesIndex:
         self.user_directory = arg
       elif opt in ('-e', '--encoding'):
         self.character_encoding = arg
+      elif opt in ('-v', '--verbose'):
+        self.verbose = True
       elif opt in ('-h', '--help'):
         self.usage()
         sys.exit(0)
@@ -114,20 +121,22 @@ class NotesIndex:
         self.add_note(filename, last_modified)
     else:
       # Check for updated and/or deleted notes since the last run.
-      for filename, last_modified_in_db in self.index['files'].iteritems():
+      for filename in self.index['files'].keys():
         if filename not in notes_on_disk:
           # Forget a deleted note.
           self.delete_note(filename)
         else:
           # Check whether previously seen note has changed?
           last_modified_on_disk = notes_on_disk[filename]
+          last_modified_in_db = self.index['files'][filename]
           if last_modified_on_disk > last_modified_in_db:
             self.delete_note(filename)
             self.add_note(filename, last_modified_on_disk)
 
   def add_note(self, filename, last_modified):
     ''' Add a note to the index (assumes the note is not already indexed). '''
-    sys.stderr.write("Scanning %s ..\n" % filename)
+    if self.verbose:
+      sys.stderr.write("Indexing %s ..\n" % filename)
     self.index['files'][filename] = last_modified
     with open(filename) as handle:
       for kw in self.tokenize(handle.read()):
@@ -139,6 +148,8 @@ class NotesIndex:
 
   def delete_note(self, filename):
     ''' Remove a note from the index. '''
+    if self.verbose:
+      sys.stderr.write("Forgetting %s ..\n" % filename)
     del self.index['files'][filename]
     for kw in self.index['keywords']:
       filter(lambda x: x != filename, self.index['keywords'][kw])
@@ -147,12 +158,19 @@ class NotesIndex:
   def search_index(self, keywords):
     ''' Return names of files containing all of the given keywords. '''
     matches = None
-    for kw in keywords:
-      filenames = self.index['keywords'].get(kw, [])
+    for usr_kw in keywords:
+      submatches = set()
+      for db_kw in self.index['keywords']:
+        # Yes I'm using a nested for loop over all keywords in the index. If
+        # I really have to I'll probably come up with something more
+        # efficient, but really it doesn't seem to be needed -- I have over
+        # 850 notes (about 8 MB) and 25000 keywords and it's plenty fast.
+        if usr_kw in db_kw:
+          submatches.update(self.index['keywords'][db_kw])
       if matches is None:
-        matches = set(filenames)
+        matches = submatches
       else:
-        matches &= set(filenames)
+        matches &= submatches
     return list(matches) if matches else []
 
   def list_keywords(self, substring, limit=25):
@@ -166,7 +184,7 @@ class NotesIndex:
           decorated.append((-len(filenames), kw))
     decorated.sort()
     selection = [d[-1] for d in decorated[:limit]]
-    print self.encode('\n'.join(selection))
+    print u'\n'.join(selection)
 
   def tokenize(self, text):
     ''' Tokenize a string into a list of normalized, unique keywords. '''
@@ -174,7 +192,7 @@ class NotesIndex:
     text = self.decode(text).lower()
     for word in re.findall(r'\w+', text, re.UNICODE):
       word = word.strip()
-      if word != '' and not word.isspace():
+      if word != '' and not word.isspace() and len(word) >= 2:
         words.add(word)
     return words
 
@@ -203,6 +221,7 @@ Valid options include:
   -d, --database=FILE  set path to keywords index file
   -n, --notes=DIR      set directory with user notes
   -e, --encoding=NAME  set character encoding of notes
+  -v, --verbose        make more noise
   -h, --help           show this message and exit
 
 For more information see http://peterodding.com/code/vim/notes/
