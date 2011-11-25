@@ -6,7 +6,7 @@
 " Note: This file is encoded in UTF-8 including a byte order mark so
 " that Vim loads the script using the right encoding transparently.
 
-let g:xolox#notes#version = '0.16'
+let g:xolox#notes#version = '0.16.4'
 
 function! xolox#notes#shortcut() " {{{1
   " The "note:" pseudo protocol is just a shortcut for the :Note command.
@@ -320,6 +320,16 @@ function! xolox#notes#search(bang, input) " {{{1
     call s:internal_search(a:bang, all_keywords, input, any_keyword)
     if &buftype == 'quickfix'
       call map(keywords, '"`" . v:val . "''"')
+      " Enable line wrapping in the quick-fix window.
+      setlocal wrap
+      " Resize the quick-fix window to 1/3 of the screen height.
+      let max_height = &lines / 3
+      execute 'resize' max_height
+      " Make it smaller if the content doesn't fill the window.
+      normal G$
+      let preferred_height = winline()
+      execute 'resize' min([max_height, preferred_height])
+      normal gg
       let w:quickfix_title = printf('Notes containing the word%s %s', len(keywords) == 1 ? '' : 's',
           \ len(keywords) > 1 ? (join(keywords[0:-2], ', ') . ' and ' . keywords[-1]) : keywords[0])
     endif
@@ -553,9 +563,9 @@ endfunction
 
 function! s:run_scanner(keywords, matches) " {{{2
   " Try to run scanner.py script to find notes matching {keywords}.
-  let output = s:python_command(a:keywords)
-  if !empty(output)
-    call extend(a:matches, split(output, '\n'))
+  let lines = s:python_command(a:keywords)
+  if type(lines) == type([])
+    call extend(a:matches, lines)
     return 1
   endif
 endfunction
@@ -563,9 +573,9 @@ endfunction
 function! xolox#notes#keyword_complete(arglead, cmdline, cursorpos) " {{{2
   let first_run = !filereadable(g:notes_indexfile)
   if first_run | call inputsave() | endif
-  let keywords = split(s:python_command('--list=' . a:arglead), '\n')
+  let keywords = s:python_command('--list=' . a:arglead)
   if first_run | call inputrestore() | endif
-  return keywords
+  return type(keywords) == type([]) ? keywords : []
 endfunction
 
 function! s:python_command(...) " {{{2
@@ -585,10 +595,12 @@ function! s:python_command(...) " {{{2
     if v:shell_error
       call xolox#misc#msg#warn("notes.vim %s: Search script failed with output: %s", g:xolox#notes#version, output)
     else
-      return output
+      let lines = split(output, "\n")
+      if !empty(lines) && lines[0] == 'Python works fine!'
+        return lines[1:]
+      endif
     endif
   endif
-  return ''
 endfunction
 
 " Getters for filenames & titles of existing notes. {{{2
@@ -847,6 +859,16 @@ function! xolox#notes#cleanup_list() " {{{3
   endif
 endfunction
 
+function! xolox#notes#refresh_syntax() " {{{3
+  " Update syntax highlighting of note names and code blocks.
+  if &filetype == 'notes' && line('$') > 1
+    let starttime = xolox#misc#timer#start()
+    call xolox#notes#highlight_names(0)
+    call xolox#notes#highlight_sources(0)
+    call xolox#misc#timer#stop("notes.vim %s: Refreshed highlighting in %s.", g:xolox#notes#version, starttime)
+  endif
+endfunction
+
 function! xolox#notes#highlight_names(force) " {{{3
   " Highlight the names of all notes as "notesName" (linked to "Underlined").
   if a:force || !(exists('b:notes_names_last_highlighted') && b:notes_names_last_highlighted > s:cache_mtime)
@@ -874,22 +896,36 @@ function! s:sort_longest_to_shortest(a, b)
   return len(a:a) < len(a:b) ? 1 : -1
 endfunction
 
-function! xolox#notes#highlight_sources(sg, eg) " {{{3
+function! xolox#notes#highlight_sources(force) " {{{3
   " Syntax highlight source code embedded in notes.
   let starttime = xolox#misc#timer#start()
+  " Look for code blocks in the current note.
   let lines = getline(1, '$')
   let filetypes = {}
   for line in getline(1, '$')
     let ft = matchstr(line, '{{' . '{\zs\w\+\>')
     if ft !~ '^\d*$' | let filetypes[ft] = 1 | endif
   endfor
-  for ft in keys(filetypes)
-    let group = 'notesSnippet' . toupper(ft)
-    let include = s:syntax_include(ft)
-    let command = 'syntax region %s matchgroup=%s start="{{{%s" matchgroup=%s end="}}}" keepend contains=%s%s'
-    execute printf(command, group, a:sg, ft, a:eg, include, has('conceal') ? ' concealends' : '')
-  endfor
-  call xolox#misc#timer#stop("notes.vim %s: Highlighted embedded sources in %s.", g:xolox#notes#version, starttime)
+  " Don't refresh the highlighting if nothing has changed.
+  if !a:force && exists('b:notes_previous_sources') && b:notes_previous_sources == filetypes
+    return
+  else
+    let b:notes_previous_sources = filetypes
+  endif
+  " Now we're ready to actually highlight the code blocks.
+  if !empty(filetypes)
+    let startgroup = 'notesCodeStart'
+    let endgroup = 'notesCodeEnd'
+    for ft in keys(filetypes)
+      let group = 'notesSnippet' . toupper(ft)
+      let include = s:syntax_include(ft)
+      let command = 'syntax region %s matchgroup=%s start="{{{%s" matchgroup=%s end="}}}" keepend contains=%s%s'
+      execute printf(command, group, startgroup, ft, endgroup, include, has('conceal') ? ' concealends' : '')
+    endfor
+    if &vbs >= 1
+      call xolox#misc#timer#stop("notes.vim %s: Highlighted embedded %s sources in %s.", g:xolox#notes#version, join(sort(keys(filetypes)), '/'), starttime)
+    endif
+  endif
 endfunction
 
 function! s:syntax_include(filetype)
