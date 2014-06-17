@@ -1,12 +1,12 @@
 ﻿" Vim auto-load script
 " Author: Peter Odding <peter@peterodding.com>
-" Last Change: June 16, 2014
+" Last Change: June 18, 2014
 " URL: http://peterodding.com/code/vim/notes/
 
 " Note: This file is encoded in UTF-8 including a byte order mark so
 " that Vim loads the script using the right encoding transparently.
 
-let g:xolox#notes#version = '0.23.6'
+let g:xolox#notes#version = '0.23.8'
 let g:xolox#notes#url_pattern = '\<\(mailto:\|javascript:\|\w\{3,}://\)\(\S*\w\)\+/\?'
 let s:scriptdir = expand('<sfile>:p:h')
 
@@ -899,10 +899,10 @@ function! xolox#notes#cache_add(filename, title) " {{{3
   let filename = xolox#misc#path#absolute(a:filename)
   if index(s:cached_fnames, filename) == -1
     call add(s:cached_fnames, filename)
-    if !empty(s:cached_titles)
+    if s:have_cached_titles
       call add(s:cached_titles, a:title)
     endif
-    if !empty(s:cached_pairs)
+    if s:have_cached_items
       let s:cached_pairs[filename] = a:title
     endif
     let s:cache_mtime = localtime()
@@ -915,10 +915,10 @@ function! xolox#notes#cache_del(filename) " {{{3
   let index = index(s:cached_fnames, filename)
   if index >= 0
     call remove(s:cached_fnames, index)
-    if !empty(s:cached_titles)
+    if s:have_cached_titles
       call remove(s:cached_titles, index)
     endif
-    if !empty(s:cached_pairs)
+    if s:have_cached_items
       call remove(s:cached_pairs, filename)
     endif
     let s:cache_mtime = localtime()
@@ -1134,6 +1134,9 @@ function! s:syntax_include(filetype)
   try
     execute 'syntax include' grouplistname 'syntax/' . a:filetype . '.vim'
     execute 'syntax include' grouplistname 'after/syntax/' . a:filetype . '.vim'
+  catch /E403/
+    " Ignore errors about syntax scripts that can't be loaded more than once.
+    " See also: https://github.com/xolox/vim-notes/issues/68
   catch /E484/
     " Ignore missing scripts.
   endtry
