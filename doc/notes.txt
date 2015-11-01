@@ -48,11 +48,12 @@ Contents ~
  6. Customizing the syntax highlighting of notes |customizing-syntax-highlighting-of-notes|
  7. Other plug-ins that work well with the notes plug-in |other-plug-ins-that-work-well-with-notes-plug-in|
   1. utl.vim                                                    |notes-utl.vim|
-  2. shell.vim                                                |notes-shell.vim|
+  2. vim-shell                                                |notes-vim-shell|
   3. VOoM                                                          |notes-voom|
   4. Txtfmt                                                      |notes-txtfmt|
  8. Using the notes file type for git commit messages |using-notes-file-type-for-git-commit-messages|
- 9. Using multiple platforms (multi boot, Cygwin, etc.) |notes-using-multiple-platforms|
+ 9. Troubleshooting                                     |notes-troubleshooting|
+  1. Searching notes does not work              |searching-notes-does-not-work|
  10. Contact                                                    |notes-contact|
  11. License                                                    |notes-license|
  12. References                                              |notes-references|
@@ -708,10 +709,10 @@ The utl.vim [13] universal text linking plug-in enables links between your
 notes, other local files and remote resources like web pages.
 
 -------------------------------------------------------------------------------
-                                                              *notes-shell.vim*
-shell.vim ~
+                                                              *notes-vim-shell*
+vim-shell ~
 
-My shell.vim [14] plug-in also enables easy navigation between your notes and
+My vim-shell [14] plug-in also enables easy navigation between your notes and
 environment like local files and directories, web pages and e-mail addresses by
 providing key mappings and commands to e.g. open the file/URL under the text
 cursor. This plug-in can also change Vim to full screen which can be really
@@ -754,15 +755,18 @@ For inspiration you can take a look at the runtime/filetype.vim [17] file in
 Vim's Mercurial repository.
 
 ===============================================================================
-                                               *notes-using-multiple-platforms*
-Using multiple platforms (multi boot, Cygwin, etc.) ~
+                                                        *notes-troubleshooting*
+Troubleshooting ~
 
-Session scripts cannot be shared between platforms because they contain
-absolute pathnames that most certainly won't match between e.g. Windows and
-Linux or even Windows and Cygwin. The best you can do is keep separate session
-scripts for different platforms (and I would certainly consider Cygwin a
-separate platform altogether :-). For more information please refer to issue
-#85 [18].
+-------------------------------------------------------------------------------
+                                                *searching-notes-does-not-work*
+Searching notes does not work ~
+
+There is a known problem where keyword searching of notes is broken when my
+vim-shell plug-in [14] is not installed (even though vim-shell is supposed to
+be an optional dependency). The easiest way to work around this is to simply
+install the vim-shell plug-in, if that is an option for you. Alternatively you
+can help me debug the problem discussed in issue 85 [18] :-).
 
 ===============================================================================
                                                                 *notes-contact*
