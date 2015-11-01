@@ -28,6 +28,8 @@ Here's a screen shot of the syntax mode (using the [Slate] [slate] color scheme 
 
 Please refer to [the installation instructions] [install-notes] available on GitHub. Once you've installed the plug-in you can get started by executing `:Note` or `:edit note:`, this will start a new note that contains instructions on how to continue from there (and how to use the plug-in in general).
 
+Make sure `filetype plugin on` (or a variant of that command) is included in your [vimrc script] [vimrc], without that things will not work as intended :-).
+
 ## Options
 
 All options have reasonable defaults so if the plug-in works after installation you don't need to change any options. The options are available for people who like to customize how the plug-in works. You can set these options in your [vimrc script] [vimrc] by including a line like this:
@@ -366,6 +368,14 @@ If the text formatting supported by the notes plug-in is not enough for you, con
     " Enable Txtfmt formatting inside notes.
     setlocal filetype=notes.txtfmt
 
+## Using the notes file type for git commit messages
+
+If you write your git commit messages in Vim and want to use the notes file type (syntax highlighting and editing mode) to edit your git commit messages you can add the following line to your [vimrc script] [vimrc]:
+
+    autocmd BufNewFile,BufRead */.git/COMMIT_EDITMSG setlocal filetype=notes
+
+This is not a complete solution (there are more types of commit messages that the pattern above won't match) but that is outside the scope of this document. For inspiration you can take a look at the [runtime/filetype.vim] [filetype.vim] file in Vim's Mercurial repository.
+
 ## Using multiple platforms (multi boot, Cygwin, etc.)
 
 Session scripts cannot be shared between platforms because they contain absolute pathnames that most certainly won't match between e.g. Windows and Linux or even Windows and Cygwin. The best you can do is keep separate session scripts for different platforms (and I would certainly consider Cygwin a separate platform altogether :-). For more information please refer to [issue #85] [issue_85].
@@ -384,6 +394,7 @@ This software is licensed under the [MIT license] [mit].
 [ctrlwgf]: http://vimdoc.sourceforge.net/htmldoc/windows.html#CTRL-W_gf
 [edit]: http://vimdoc.sourceforge.net/htmldoc/editing.html#:edit
 [enc]: http://vimdoc.sourceforge.net/htmldoc/options.html#'encoding'
+[filetype.vim]: https://code.google.com/p/vim/source/browse/runtime/filetype.vim?r=fbc1131f0ba5be4ec74fb2ccdfb3559b446a2b1e#778
 [folding]: https://raw.githubusercontent.com/xolox/vim-notes/master/screenshots/folding.png
 [geshi]: http://www.mediawiki.org/wiki/Extension:SyntaxHighlight_GeSHi
 [gf]: http://vimdoc.sourceforge.net/htmldoc/editing.html#gf
